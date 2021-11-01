@@ -67,17 +67,25 @@ def export_onnx(model, im, file, opset, train, dynamic, simplify, prefix=colorst
         check_requirements(('onnx',))
         import onnx
 
+        number_of_layers = len(model.yaml['anchors'])
+
+        dynamic_axes = {'input': {0: 'batch', 2: 'width', 3: 'height'}}
+        output_names = [None] * number_of_layers
+
+        for i in range(number_of_layers):
+            name = '{}_yolo'.format(i)
+            output_names[i] = name
+            dynamic_axes[name] = {0: 'batch'}
+
         print(f'\n{prefix} starting export with onnx {onnx.__version__}...')
         f = file.with_suffix('.onnx')
 
         torch.onnx.export(model, im, f, verbose=False, opset_version=opset,
                           training=torch.onnx.TrainingMode.TRAINING if train else torch.onnx.TrainingMode.EVAL,
                           do_constant_folding=not train,
-                          input_names=['images'],
-                          output_names=['output'],
-                          dynamic_axes={'images': {0: 'batch', 2: 'height', 3: 'width'},  # shape(1,3,640,640)
-                                        'output': {0: 'batch', 1: 'anchors'}  # shape(1,25200,85)
-                                        } if dynamic else None)
+                          input_names=['input'],
+                          output_names=output_names,
+                          dynamic_axes=dynamic_axes if dynamic else None)
 
         # Checks
         model_onnx = onnx.load(f)  # load onnx model
@@ -94,7 +102,7 @@ def export_onnx(model, im, file, opset, train, dynamic, simplify, prefix=colorst
                 model_onnx, check = onnxsim.simplify(
                     model_onnx,
                     dynamic_input_shape=dynamic,
-                    input_shapes={'images': list(im.shape)} if dynamic else None)
+                    input_shapes={'input': list(im.shape)} if dynamic else None)
                 assert check, 'assert check failed'
                 onnx.save(model_onnx, f)
             except Exception as e:
