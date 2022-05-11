@@ -25,6 +25,8 @@
 
 storage.googleapis.com
 runs/*
+tasks/**/exp_*/*
+tasks/**/wandb*/*
 data/*
 data/images/*
 !data/*.yaml
