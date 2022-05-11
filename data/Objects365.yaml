@@ -1,10 +1,10 @@
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
-# Objects365 dataset https://www.objects365.org/
+# Objects365 dataset https://www.objects365.org/ by Megvii
 # Example usage: python train.py --data Objects365.yaml
 # parent
 # ├── yolov5
 # └── datasets
-#     └── Objects365  ← downloads here
+#     └── Objects365  ← downloads here (712 GB = 367G data + 345G zips)
 
 
 # Train/val/test sets as 1) dir: path/to/imgs, 2) file: path/to/imgs.txt, or 3) list: [path/to/imgs1, path/to/imgs2, ..]
@@ -60,23 +60,25 @@ names: ['Person', 'Sneakers', 'Chair', 'Other Shoes', 'Hat', 'Car', 'Lamp', 'Gla
 
 # Download script/URL (optional) ---------------------------------------------------------------------------------------
 download: |
-  from pycocotools.coco import COCO
   from tqdm import tqdm
-  
-  from utils.general import Path, download, np, xyxy2xywhn
-  
+
+  from utils.general import Path, check_requirements, download, np, xyxy2xywhn
+
+  check_requirements(('pycocotools>=2.0',))
+  from pycocotools.coco import COCO
+
   # Make Directories
   dir = Path(yaml['path'])  # dataset root dir
   for p in 'images', 'labels':
       (dir / p).mkdir(parents=True, exist_ok=True)
       for q in 'train', 'val':
           (dir / p / q).mkdir(parents=True, exist_ok=True)
-  
+
   # Train, Val Splits
   for split, patches in [('train', 50 + 1), ('val', 43 + 1)]:
       print(f"Processing {split} in {patches} patches ...")
       images, labels = dir / 'images' / split, dir / 'labels' / split
-  
+
       # Download
       url = f"https://dorc.ks3-cn-beijing.ksyun.com/data-set/2020Objects365%E6%95%B0%E6%8D%AE%E9%9B%86/{split}/"
       if split == 'train':
@@ -86,11 +88,11 @@ download: |
           download([f'{url}zhiyuan_objv2_{split}.json'], dir=dir, delete=False)  # annotations json
           download([f'{url}images/v1/patch{i}.tar.gz' for i in range(15 + 1)], dir=images, curl=True, delete=False, threads=8)
           download([f'{url}images/v2/patch{i}.tar.gz' for i in range(16, patches)], dir=images, curl=True, delete=False, threads=8)
-  
+
       # Move
       for f in tqdm(images.rglob('*.jpg'), desc=f'Moving {split} images'):
           f.rename(images / f.name)  # move to /images/{split}
-  
+
       # Labels
       coco = COCO(dir / f'zhiyuan_objv2_{split}.json')
       names = [x["name"] for x in coco.loadCats(coco.getCatIds())]
